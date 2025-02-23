@@ -4,6 +4,8 @@ import json
 import os
 from PIL import Image, ImageTk, UnidentifiedImageError
 import base64
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Nome do arquivo JSON
 ARQUIVO_NOTAS = 'minhas_notas_gui.json'
@@ -67,7 +69,7 @@ def salvar_nota_gui():
     nova_nota_gui()
 
 def listar_notas_gui():
-    # ... (função listar_notas_gui - sem alterações) ...
+    """Lista todas as notas no listbox."""
     listbox_notas.delete(0, tk.END)
     if notas:
         for i, nota in enumerate(notas):
@@ -89,7 +91,7 @@ def listar_notas_por_categoria_gui():
             listbox_notas.insert(tk.END, f"{i + 1}. {nota['titulo']} ({nota['categoria']})")
 
 def visualizar_nota_gui():
-    # ... (função visualizar_nota_gui - sem alterações) ...
+    """Visualiza a nota selecionada na lista."""
     global indice_nota_editando, botao_salvar
     indice_selecionado = listbox_notas.curselection()
     if not indice_selecionado:
@@ -106,7 +108,7 @@ def visualizar_nota_gui():
         categoria_entry.insert(0, nota_selecionada['categoria'])
         conteudo_text.delete("1.0", tk.END)
 
-        # Load content, handling text and potentially image placeholders (if implemented later)
+        # Carregar conteúdo, lidando com texto e possivelmente placeholders de imagem (se implementado posteriormente)
         conteudo_text.insert(tk.END, nota_selecionada['conteudo'])
 
         indice_nota_editando = index_nota
@@ -273,6 +275,58 @@ def inserir_imagem_gui():
     """Função principal para inserir imagem, agora chama a com diálogo."""
     inserir_imagem_com_tamanho_gui()
 
+def salvar_nota_como_txt():
+    """Salva a nota atual como um arquivo de texto."""
+    titulo = titulo_entry.get()
+    categoria = categoria_entry.get()
+    conteudo = conteudo_text.get("1.0", tk.END).strip()
+
+    if not titulo:
+        messagebox.showerror("Erro", "Título não pode estar vazio.")
+        return
+
+    arquivo_txt = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+    if arquivo_txt:
+        try:
+            with open(arquivo_txt, 'w', encoding='utf-8') as f:
+                f.write(f"Título: {titulo}\n")
+                f.write(f"Categoria: {categoria}\n")
+                f.write("Conteúdo:\n")
+                f.write(conteudo)
+            messagebox.showinfo("Sucesso", "Nota salva como arquivo de texto!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar arquivo de texto: {e}")
+
+def salvar_nota_como_pdf():
+    """Salva a nota atual como um arquivo PDF."""
+    titulo = titulo_entry.get()
+    categoria = categoria_entry.get()
+    conteudo = conteudo_text.get("1.0", tk.END).strip()
+
+    if not titulo:
+        messagebox.showerror("Erro", "Título não pode estar vazio.")
+        return
+
+    arquivo_pdf = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+    if arquivo_pdf:
+        try:
+            c = canvas.Canvas(arquivo_pdf, pagesize=letter)
+            width, height = letter
+
+            c.drawString(100, height - 100, f"Título: {titulo}")
+            c.drawString(100, height - 120, f"Categoria: {categoria}")
+            c.drawString(100, height - 140, "Conteúdo:")
+
+            text = c.beginText(100, height - 160)
+            text.setFont("Helvetica", 10)
+            for line in conteudo.split('\n'):
+                text.textLine(line)
+            c.drawText(text)
+
+            c.save()
+            messagebox.showinfo("Sucesso", "Nota salva como arquivo PDF!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar arquivo PDF: {e}")
 
 # --- Configuração da Interface ---
 root = tk.Tk()
@@ -322,6 +376,15 @@ combobox_tamanho_fonte.bind("<<ComboboxSelected>>", lambda event: alterar_tamanh
 botao_inserir_imagem = tk.Button(frame_formatacao, text="Inserir Imagem", command=inserir_imagem_gui)
 botao_inserir_imagem.pack(side=tk.LEFT, padx=5)
 
+# --- Frame de botões para salvar como txt e pdf ---
+frame_botoes_salvar = tk.Frame(frame_campos)
+frame_botoes_salvar.pack(anchor=tk.E, pady=5)
+
+botao_salvar_txt = tk.Button(frame_botoes_salvar, text="Salvar como TXT", command=salvar_nota_como_txt)
+botao_salvar_txt.pack(side=tk.LEFT, padx=5)
+
+botao_salvar_pdf = tk.Button(frame_botoes_salvar, text="Salvar como PDF", command=salvar_nota_como_pdf)
+botao_salvar_pdf.pack(side=tk.LEFT, padx=5)
 
 conteudo_text = scrolledtext.ScrolledText(frame_campos, height=20, font=("Arial", 12))
 conteudo_text.pack(fill=tk.BOTH, expand=True, pady=2)
